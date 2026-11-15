@@ -1,0 +1,101 @@
+
+# ==========================================
+# FLUTTER / DART
+# ==========================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# ==========================================
+# NODE.JS / NPM
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.npm/
+.eslintcache
+.parcel-cache/
+.next/
+.nuxt/
+dist/
+
+# ==========================================
+# ENVIRONMENT VARIABLES / SECRETS
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ==========================================
+# ANDROID
+# ==========================================
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+/android/captures/
+
+# ==========================================
+# IOS
+# ==========================================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# ==========================================
+# IDE / EDITORS
+# ==========================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.atom/
+
+# ==========================================
+# SYSTEM / MISCELLANEOUS
+# ==========================================
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+Thumbs.db
+.history/
+.svn/
+.build/
+.buildlog/
+.swiftpm/
+migrate_working_dir/
+
+# ==========================================
+# BUILD / SYMBOLICATION
+# ==========================================
+app.*.symbols
+app.*.map.json
+
+# ==========================================
+# SUPABASE
+# ==========================================
+.supabase/
+
+# ==========================================
+# TEMPORARY FILES
+# ==========================================
+*.tmp
+*.bak
+*.orig
