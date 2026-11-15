@@ -4,46 +4,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const defaultModel = "gemini-2.5-flash";
-
-const responseSchema = {
-  type: "OBJECT",
-  properties: {
-    food_name: { type: "STRING" },
-    subtitle: { type: "STRING" },
-    emoji: { type: "STRING" },
-    rating: { type: "INTEGER" },
-    rating_label: { type: "STRING" },
-    confidence: { type: "NUMBER" },
-    serving: { type: "STRING" },
-    calories: { type: "INTEGER" },
-    protein: { type: "NUMBER" },
-    carbs: { type: "NUMBER" },
-    fat: { type: "NUMBER" },
-    fiber: { type: "NUMBER" },
-    sodium: { type: "NUMBER" },
-    ingredients: { type: "ARRAY", items: { type: "STRING" } },
-    insight: { type: "STRING" },
-  },
-  required: [
-    "food_name",
-    "subtitle",
-    "emoji",
-    "rating",
-    "rating_label",
-    "confidence",
-    "serving",
-    "calories",
-    "protein",
-    "carbs",
-    "fat",
-    "fiber",
-    "sodium",
-    "ingredients",
-    "insight",
-  ],
-};
-
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -61,80 +21,85 @@ Deno.serve(async (request) => {
 
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
-    return json({ error: "GEMINI_API_KEY is not configured in Supabase." }, 500);
+    return json({ error: "GEMINI_API_KEY is not configured" }, 500);
   }
 
   try {
     const body = await request.json();
     const imageBase64 = body?.imageBase64;
     const mimeType = body?.mimeType ?? "image/jpeg";
+
     if (typeof imageBase64 !== "string" || imageBase64.length === 0) {
-      return json({ error: "A food image is required." }, 400);
+      return json({ error: "Image required" }, 400);
     }
 
-    const model = Deno.env.get("GEMINI_MODEL") ?? defaultModel;
-    const prompt = `Analyze the food in this photo for a calorie tracking app. Identify the main food or meal, estimate one visible serving, and provide approximate nutrition. Never claim laboratory-level accuracy. Return only JSON matching the supplied schema. Use numbers, not units, for nutrition values. rating is 0-100 and confidence is 0-1. If portions or ingredients are uncertain, say so in insight.`;
+    // Use v1 API (not v1beta) with gemini-1.5-flash-001
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-001:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType,
-                    data: imageBase64,
-                  },
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema,
-            temperature: 0.2,
-          },
+          contents: [{
+            parts: [
+              {
+                text: `Analyze this food and return JSON only:
+{
+  "food_name": "food name",
+  "subtitle": "description",
+  "emoji": "🍎",
+  "rating": 85,
+  "rating_label": "healthy",
+  "confidence": 0.9,
+  "serving": "1 serving",
+  "calories": 200,
+  "protein": 5.0,
+  "carbs": 30.0,
+  "fat": 8.0,
+  "fiber": 3.0,
+  "sodium": 100.0,
+  "ingredients": ["list"],
+  "insight": "tip"
+}`
+              },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: imageBase64
+                }
+              }
+            ]
+          }]
         }),
-      },
+      }
     );
 
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
-      console.error("Gemini analysis failed", errorText);
-      let detail = errorText;
-      try {
-        const errorBody = JSON.parse(errorText);
-        detail = errorBody?.error?.message ?? errorText;
-      } catch (_) {
-        // Keep the original response when Gemini did not return JSON.
-      }
-      return json(
-        {
-          error: "The vision model rejected the request.",
-          detail: String(detail).slice(0, 500),
-        },
-        502,
-      );
+      console.error("Gemini error:", errorText);
+      return json({
+        error: "Gemini API error",
+        detail: errorText.slice(0, 300)
+      }, 502);
     }
 
     const result = await geminiResponse.json();
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== "string") {
-      return json({ error: "The vision model returned no analysis." }, 502);
+
+    if (!text) {
+      return json({ error: "No response from Gemini" }, 502);
     }
 
-    const normalizedText = text
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-    return json(JSON.parse(normalizedText));
+    const cleanText = text.replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleanText);
+
+    return json(data);
+
   } catch (error) {
-    console.error("analyze-food error", error);
-    return json({ error: "Could not analyze this image." }, 500);
+    console.error("Error:", error);
+    return json({
+      error: "Analysis failed",
+      detail: String(error).slice(0, 200)
+    }, 500);
   }
 });
